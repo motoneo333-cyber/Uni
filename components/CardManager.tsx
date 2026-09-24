@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import ImagePicker from "./ImagePicker";
 import OcclusionEditor from "./OcclusionEditor";
+import ConfirmDialog from "./ConfirmDialog";
+import { toast } from "@/lib/toast";
 
 type Card = {
   id: string;
@@ -18,6 +20,9 @@ type Card = {
   dueDate: string;
 };
 
+const inputClass =
+  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100";
+
 export default function CardManager({ subjectId }: { subjectId: string }) {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,13 +33,13 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
   const [tags, setTags] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFront, setEditFront] = useState("");
   const [editBack, setEditBack] = useState("");
   const [editFrontImageUrl, setEditFrontImageUrl] = useState<string | null>(null);
   const [editBackImageUrl, setEditBackImageUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<"simple" | "occlusion">("simple");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -68,13 +73,16 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
       setFrontImageUrl(null);
       setBackImageUrl(null);
       setTags("");
+      toast("Tarjeta agregada", "success");
       load();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      toast(data.error ?? "No se pudo agregar la tarjeta", "error");
     }
   }
 
   async function submitBulk(e: React.FormEvent) {
     e.preventDefault();
-    setMessage(null);
     const res = await fetch("/api/cards/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -82,18 +90,21 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
     });
     const data = await res.json();
     if (res.ok) {
-      setMessage(`Se agregaron ${data.created} tarjetas.`);
+      toast(`Se agregaron ${data.created} tarjetas`, "success");
       setBulkText("");
       load();
     } else {
-      setMessage(data.error ?? "Error al importar");
+      toast(data.error ?? "Error al importar", "error");
     }
   }
 
-  async function deleteCard(id: string) {
-    if (!confirm("¿Eliminar esta tarjeta?")) return;
+  async function confirmDelete() {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
     await fetch(`/api/cards/${id}`, { method: "DELETE" });
     setCards((prev) => prev.filter((c) => c.id !== id));
+    toast("Tarjeta eliminada", "success");
   }
 
   function startEdit(card: Card) {
@@ -117,19 +128,24 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
     });
     if (res.ok) {
       setEditingId(null);
+      toast("Cambios guardados", "success");
       load();
+    } else {
+      toast("No se pudo guardar", "error");
     }
   }
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-3">
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex gap-1 text-sm">
           <button
             type="button"
             onClick={() => setMode("simple")}
-            className={`rounded-md px-3 py-1.5 font-medium ${
-              mode === "simple" ? "bg-zinc-900 text-white" : "text-zinc-500 hover:bg-zinc-100"
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              mode === "simple"
+                ? "bg-indigo-600 text-white"
+                : "text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
             }`}
           >
             Tarjeta simple
@@ -137,8 +153,10 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
           <button
             type="button"
             onClick={() => setMode("occlusion")}
-            className={`rounded-md px-3 py-1.5 font-medium ${
-              mode === "occlusion" ? "bg-zinc-900 text-white" : "text-zinc-500 hover:bg-zinc-100"
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              mode === "occlusion"
+                ? "bg-indigo-600 text-white"
+                : "text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
             }`}
           >
             Oclusión de imagen
@@ -152,7 +170,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
               onChange={(e) => setFront(e.target.value)}
               placeholder="Pregunta / frente"
               rows={2}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+              className={inputClass}
             />
             <ImagePicker
               label="Imagen del frente (opcional)"
@@ -164,7 +182,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
               onChange={(e) => setBack(e.target.value)}
               placeholder="Respuesta / dorso"
               rows={2}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+              className={inputClass}
             />
             <ImagePicker
               label="Imagen del dorso (opcional)"
@@ -175,11 +193,11 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="Tags (opcional, separados por coma)"
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+              className={inputClass}
             />
             <button
               type="submit"
-              className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
             >
               Agregar
             </button>
@@ -189,16 +207,16 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
         )}
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <button
           onClick={() => setBulkOpen((v) => !v)}
-          className="text-sm font-medium text-zinc-900"
+          className="text-sm font-medium text-zinc-900 dark:text-zinc-100"
         >
           {bulkOpen ? "▾" : "▸"} Importar varias de una vez
         </button>
         {bulkOpen && (
           <form onSubmit={submitBulk} className="mt-3 space-y-2">
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
               Una tarjeta por línea, formato: <code>pregunta | respuesta</code> (opcional:{" "}
               <code>| tag1,tag2</code> al final)
             </p>
@@ -207,33 +225,41 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
               onChange={(e) => setBulkText(e.target.value)}
               rows={6}
               placeholder={"¿Qué es X? | Es Y\n¿Otra pregunta? | Otra respuesta | tema1,tema2"}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm font-mono outline-none focus:border-zinc-500"
+              className={`${inputClass} font-mono`}
             />
             <button
               type="submit"
-              className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
             >
               Importar
             </button>
-            {message && <p className="text-xs text-zinc-600">{message}</p>}
           </form>
         )}
       </div>
 
       <div>
-        <p className="text-sm font-medium text-zinc-900 mb-2">
+        <p className="text-sm font-medium text-zinc-900 mb-2 dark:text-zinc-100">
           Tarjetas ({cards.length})
         </p>
         {loading ? (
-          <p className="text-sm text-zinc-500">Cargando...</p>
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-16 animate-pulse rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800"
+              />
+            ))}
+          </div>
         ) : cards.length === 0 ? (
-          <p className="text-sm text-zinc-500">Todavía no hay tarjetas.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Todavía no hay tarjetas. Agregá la primera arriba.
+          </p>
         ) : (
           <ul className="space-y-2">
             {cards.map((c) => (
               <li
                 key={c.id}
-                className="rounded-lg border border-zinc-200 bg-white p-3"
+                className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
               >
                 {editingId === c.id ? (
                   <div className="space-y-2">
@@ -241,7 +267,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                       value={editFront}
                       onChange={(e) => setEditFront(e.target.value)}
                       rows={2}
-                      className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                      className={inputClass}
                     />
                     <ImagePicker
                       label="Imagen del frente"
@@ -252,7 +278,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                       value={editBack}
                       onChange={(e) => setEditBack(e.target.value)}
                       rows={2}
-                      className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                      className={inputClass}
                     />
                     <ImagePicker
                       label="Imagen del dorso"
@@ -262,13 +288,13 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                     <div className="flex gap-2">
                       <button
                         onClick={() => saveEdit(c.id)}
-                        className="rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white"
+                        className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-indigo-700"
                       >
                         Guardar
                       </button>
                       <button
                         onClick={() => setEditingId(null)}
-                        className="rounded-md border border-zinc-300 px-2 py-1 text-xs"
+                        className="rounded-md border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-700 dark:text-zinc-300"
                       >
                         Cancelar
                       </button>
@@ -278,7 +304,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex items-start gap-3">
                       {(c.frontImageUrl || c.backImageUrl) && (
-                        <div className="relative h-12 w-12 shrink-0 rounded-md border border-zinc-200 overflow-hidden">
+                        <div className="relative h-12 w-12 shrink-0 rounded-md border border-zinc-200 overflow-hidden dark:border-zinc-700">
                           <Image
                             src={(c.frontImageUrl ?? c.backImageUrl)!}
                             alt=""
@@ -289,17 +315,17 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm text-zinc-900">
+                        <p className="text-sm text-zinc-900 dark:text-zinc-100">
                           {c.occlusions && c.occlusions.length > 0 && (
-                            <span className="mr-1 rounded bg-emerald-100 px-1 text-[10px] font-medium text-emerald-700">
+                            <span className="mr-1 rounded bg-emerald-100 px-1 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
                               oclusión · {c.occlusions.length} zona
                               {c.occlusions.length === 1 ? "" : "s"}
                             </span>
                           )}
                           {c.front}
                         </p>
-                        <p className="text-sm text-zinc-500">{c.back}</p>
-                        <p className="text-xs text-zinc-400 mt-1">
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">{c.back}</p>
+                        <p className="text-xs text-zinc-400 mt-1 dark:text-zinc-500">
                           {c.repetitions === 0
                             ? "Sin repasar"
                             : `${c.interval}d · vence ${new Date(c.dueDate).toLocaleDateString("es-AR")}`}
@@ -309,13 +335,13 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                     <div className="flex gap-2 shrink-0">
                       <button
                         onClick={() => startEdit(c)}
-                        className="text-xs text-zinc-500 hover:text-zinc-900"
+                        className="text-xs text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                       >
                         Editar
                       </button>
                       <button
-                        onClick={() => deleteCard(c.id)}
-                        className="text-xs text-red-500 hover:text-red-700"
+                        onClick={() => setPendingDeleteId(c.id)}
+                        className="text-xs text-red-500 transition-colors hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                       >
                         Eliminar
                       </button>
@@ -327,6 +353,14 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
           </ul>
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="¿Eliminar esta tarjeta?"
+        description="No se puede deshacer."
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   );
 }
