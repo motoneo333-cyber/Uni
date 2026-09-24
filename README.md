@@ -42,7 +42,9 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
 - **Racha de días** en el inicio, modo oscuro automático (según el sistema),
   atajos de teclado en Estudiar (espacio para revelar, 1-4 para calificar),
   notificaciones en pantalla en vez de alertas del navegador, e instalable
-  como app en el celular ("Agregar a pantalla de inicio").
+  como app en el celular ("Agregar a pantalla de inicio" / "Instalar app"),
+  con un service worker mínimo que habilita la instalación y da un colchón
+  offline básico para el shell de la app.
 
 ## Stack
 
