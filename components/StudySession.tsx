@@ -26,6 +26,14 @@ const GRADES: { grade: number; label: string; className: string }[] = [
   { grade: 5, label: "Fácil", className: "bg-blue-600 hover:bg-blue-700" },
 ];
 
+function normalize(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
 export default function StudySession() {
   const searchParams = useSearchParams();
   const subjectId = searchParams.get("subjectId") ?? undefined;
@@ -35,6 +43,7 @@ export default function StudySession() {
   const [revealed, setRevealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reviewedInSession, setReviewedInSession] = useState(0);
+  const [guesses, setGuesses] = useState<string[]>([]);
 
   const loadNext = useCallback(async () => {
     setLoading(true);
@@ -44,6 +53,9 @@ export default function StudySession() {
     const data = await res.json();
     setCard(data.card);
     setDueCount(data.dueCount);
+    setGuesses(
+      Array.isArray(data.card?.occlusions) ? data.card.occlusions.map(() => "") : []
+    );
     setLoading(false);
   }, [subjectId]);
 
@@ -97,28 +109,35 @@ export default function StudySession() {
             <div className="relative mx-auto mb-3 w-full">
               {/* eslint-disable-next-line @next/next/no-img-element -- necesita tamaño natural sin letterboxing para que los recuadros coincidan en % */}
               <img src={card.frontImageUrl} alt="" className="w-full h-auto block rounded-md" />
-              {card.occlusions!.map((r, i) => (
-                <div
-                  key={i}
-                  className={`absolute flex items-center justify-center overflow-hidden ${
-                    revealed
-                      ? "border-2 border-emerald-500 bg-transparent"
-                      : "bg-zinc-800"
-                  }`}
-                  style={{
-                    left: `${r.x}%`,
-                    top: `${r.y}%`,
-                    width: `${r.w}%`,
-                    height: `${r.h}%`,
-                  }}
-                >
-                  {revealed && (
-                    <span className="text-[10px] font-medium text-emerald-900 bg-white/80 px-0.5 truncate">
-                      {r.label}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {card.occlusions!.map((r, i) => {
+                const correct = revealed && normalize(guesses[i] ?? "") === normalize(r.label);
+                return (
+                  <div
+                    key={i}
+                    className={`absolute flex items-center justify-center overflow-hidden ${
+                      revealed
+                        ? `border-2 bg-transparent ${correct ? "border-emerald-500" : "border-red-500"}`
+                        : "bg-zinc-800"
+                    }`}
+                    style={{
+                      left: `${r.x}%`,
+                      top: `${r.y}%`,
+                      width: `${r.w}%`,
+                      height: `${r.h}%`,
+                    }}
+                  >
+                    {revealed ? (
+                      <span
+                        className={`text-[10px] font-medium bg-white/80 px-0.5 truncate ${correct ? "text-emerald-900" : "text-red-700"}`}
+                      >
+                        {i + 1}. {r.label}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-white">{i + 1}</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             card.frontImageUrl && (
@@ -134,10 +153,48 @@ export default function StudySession() {
             )
           )}
           <p className="text-base text-zinc-900 whitespace-pre-wrap">{card.front}</p>
-          {revealed && (
+
+          {isOcclusion && !revealed && (
+            <div className="mt-4 space-y-2 text-left">
+              {card.occlusions!.map((_, i) => (
+                <input
+                  key={i}
+                  value={guesses[i] ?? ""}
+                  onChange={(e) =>
+                    setGuesses((g) => {
+                      const next = [...g];
+                      next[i] = e.target.value;
+                      return next;
+                    })
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    const nextInput = document.getElementById(`occ-guess-${i + 1}`);
+                    if (nextInput) nextInput.focus();
+                    else setRevealed(true);
+                  }}
+                  id={`occ-guess-${i}`}
+                  autoFocus={i === 0}
+                  placeholder={`Zona ${i + 1}`}
+                  className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+                />
+              ))}
+            </div>
+          )}
+
+          {isOcclusion && revealed && (
+            <p className="mt-3 text-sm font-medium text-zinc-700">
+              {card.occlusions!.filter(
+                (r, i) => normalize(guesses[i] ?? "") === normalize(r.label)
+              ).length}{" "}
+              / {card.occlusions!.length} correctas
+            </p>
+          )}
+
+          {revealed && !isOcclusion && (
             <>
               <hr className="my-4 border-zinc-200" />
-              {!isOcclusion && card.backImageUrl && (
+              {card.backImageUrl && (
                 <div className="relative mx-auto mb-3 h-48 w-full">
                   <Image
                     src={card.backImageUrl}
@@ -159,7 +216,7 @@ export default function StudySession() {
           onClick={() => setRevealed(true)}
           className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
         >
-          Mostrar respuesta
+          {isOcclusion ? "Corregir" : "Mostrar respuesta"}
         </button>
       ) : (
         <div className="grid grid-cols-4 gap-2">

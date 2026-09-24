@@ -19,8 +19,10 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
 - **Oclusión de imagen**: en cada materia, pestaña "Oclusión de imagen" —
   subís un diagrama, marcás con el mouse cada zona con el nombre de una
   estructura y escribís qué es. Todas las zonas marcadas sobre la misma
-  imagen quedan juntas en **una sola tarjeta**: el frente muestra la imagen
-  con todo tapado, el dorso la muestra con todo revelado y etiquetado.
+  imagen quedan juntas en **una sola tarjeta**. Al estudiarla, cada zona
+  tapada tiene un número y un campo de texto para escribir la respuesta a
+  mano; al corregir se revela cada zona en verde (correcta) o rojo
+  (incorrecta) junto al nombre real.
 - Acceso protegido con una sola contraseña (pensada para un solo usuario).
 
 ## Stack
