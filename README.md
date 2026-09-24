@@ -16,6 +16,11 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
   golpe con el formato `pregunta | respuesta | tags(opcional)`, una por línea.
 - Cada tarjeta puede tener una imagen opcional en el frente y/o el dorso
   (útil para anatomía, posturas, técnicas manuales).
+- **Oclusión de imagen**: en cada materia, pestaña "Oclusión de imagen" —
+  subís un diagrama, marcás con el mouse la zona con el nombre de una
+  estructura, escribís cuál es, y se crea una tarjeta que tapa esa zona en
+  el frente y la revela en el dorso. Se puede repetir sobre la misma imagen
+  para generar varias tarjetas (una por estructura).
 - Acceso protegido con una sola contraseña (pensada para un solo usuario).
 
 ## Stack
@@ -81,13 +86,21 @@ tarjetas por materia.
 ### Si ya tenías la base creada de antes (agregar soporte de imágenes)
 
 Si ya corriste `db:push`/`db:seed` una vez, no hace falta recrear nada: solo
-agregá las 2 columnas nuevas. Pegá esto en el **SQL Editor** de Supabase (o
+agregá las columnas nuevas. Pegá esto en el **SQL Editor** de Supabase (o
 corré `npm run db:push` de nuevo, que detecta el cambio de schema solo):
 
 ```sql
 ALTER TABLE "Card" ADD COLUMN "frontImageUrl" TEXT;
 ALTER TABLE "Card" ADD COLUMN "backImageUrl" TEXT;
+ALTER TABLE "Card" ADD COLUMN "occX" DOUBLE PRECISION;
+ALTER TABLE "Card" ADD COLUMN "occY" DOUBLE PRECISION;
+ALTER TABLE "Card" ADD COLUMN "occW" DOUBLE PRECISION;
+ALTER TABLE "Card" ADD COLUMN "occH" DOUBLE PRECISION;
 ```
+
+(Si ya corriste el `ALTER TABLE` de `frontImageUrl`/`backImageUrl` antes,
+pegá solo las 4 líneas de `occX`/`occY`/`occW`/`occH` — las de imagen ya
+las tenés.)
 
 ## Desarrollo local
 

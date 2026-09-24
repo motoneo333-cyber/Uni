@@ -2,8 +2,18 @@ import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 
-async function safeDelBlob(url: string | null | undefined) {
+// Varias tarjetas de oclusión pueden compartir la misma imagen (la misma
+// frontImageUrl con distintos recuadros), así que antes de borrar un blob
+// hay que confirmar que ninguna otra tarjeta lo siga usando.
+async function safeDelBlobIfOrphaned(url: string | null | undefined, excludeCardId: string) {
   if (!url) return;
+  const stillUsed = await prisma.card.count({
+    where: {
+      id: { not: excludeCardId },
+      OR: [{ frontImageUrl: url }, { backImageUrl: url }],
+    },
+  });
+  if (stillUsed > 0) return;
   try {
     await del(url);
   } catch {
@@ -24,6 +34,10 @@ export async function PATCH(
     tags?: string[];
     frontImageUrl?: string | null;
     backImageUrl?: string | null;
+    occX?: number | null;
+    occY?: number | null;
+    occW?: number | null;
+    occH?: number | null;
   } = {};
 
   if (typeof body.front === "string") data.front = body.front.trim();
@@ -33,6 +47,10 @@ export async function PATCH(
   }
   if ("frontImageUrl" in body) data.frontImageUrl = body.frontImageUrl || null;
   if ("backImageUrl" in body) data.backImageUrl = body.backImageUrl || null;
+  if ("occX" in body) data.occX = body.occX == null ? null : Number(body.occX);
+  if ("occY" in body) data.occY = body.occY == null ? null : Number(body.occY);
+  if ("occW" in body) data.occW = body.occW == null ? null : Number(body.occW);
+  if ("occH" in body) data.occH = body.occH == null ? null : Number(body.occH);
 
   const previous =
     "frontImageUrl" in data || "backImageUrl" in data
@@ -46,10 +64,10 @@ export async function PATCH(
 
   if (previous) {
     if ("frontImageUrl" in data && previous.frontImageUrl !== data.frontImageUrl) {
-      await safeDelBlob(previous.frontImageUrl);
+      await safeDelBlobIfOrphaned(previous.frontImageUrl, id);
     }
     if ("backImageUrl" in data && previous.backImageUrl !== data.backImageUrl) {
-      await safeDelBlob(previous.backImageUrl);
+      await safeDelBlobIfOrphaned(previous.backImageUrl, id);
     }
   }
 
@@ -62,6 +80,9 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const card = await prisma.card.delete({ where: { id } });
-  await Promise.all([safeDelBlob(card.frontImageUrl), safeDelBlob(card.backImageUrl)]);
+  await Promise.all([
+    safeDelBlobIfOrphaned(card.frontImageUrl, id),
+    safeDelBlobIfOrphaned(card.backImageUrl, id),
+  ]);
   return NextResponse.json({ ok: true });
 }

@@ -11,6 +11,10 @@ type StudyCard = {
   back: string;
   frontImageUrl: string | null;
   backImageUrl: string | null;
+  occX: number | null;
+  occY: number | null;
+  occW: number | null;
+  occH: number | null;
   tags: string[];
   subjectId: string;
   subjectName: string;
@@ -79,6 +83,8 @@ export default function StudySession() {
     );
   }
 
+  const isOcclusion = card.occW != null && card.occH != null;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between text-xs text-zinc-500">
@@ -88,22 +94,38 @@ export default function StudySession() {
 
       <div className="min-h-[220px] rounded-xl border border-zinc-200 bg-white p-6 flex items-center justify-center text-center">
         <div className="w-full">
-          {card.frontImageUrl && (
-            <div className="relative mx-auto mb-3 h-48 w-full">
-              <Image
-                src={card.frontImageUrl}
-                alt=""
-                fill
-                unoptimized
-                className="object-contain"
+          {isOcclusion && card.frontImageUrl ? (
+            <div className="relative mx-auto mb-3 w-full">
+              {/* eslint-disable-next-line @next/next/no-img-element -- necesita tamaño natural sin letterboxing para que el recuadro coincida en % */}
+              <img src={card.frontImageUrl} alt="" className="w-full h-auto block rounded-md" />
+              <div
+                className={`absolute ${revealed ? "border-2 border-emerald-500 bg-transparent" : "bg-zinc-800"}`}
+                style={{
+                  left: `${card.occX}%`,
+                  top: `${card.occY}%`,
+                  width: `${card.occW}%`,
+                  height: `${card.occH}%`,
+                }}
               />
             </div>
+          ) : (
+            card.frontImageUrl && (
+              <div className="relative mx-auto mb-3 h-48 w-full">
+                <Image
+                  src={card.frontImageUrl}
+                  alt=""
+                  fill
+                  unoptimized
+                  className="object-contain"
+                />
+              </div>
+            )
           )}
           <p className="text-base text-zinc-900 whitespace-pre-wrap">{card.front}</p>
           {revealed && (
             <>
               <hr className="my-4 border-zinc-200" />
-              {card.backImageUrl && (
+              {!isOcclusion && card.backImageUrl && (
                 <div className="relative mx-auto mb-3 h-48 w-full">
                   <Image
                     src={card.backImageUrl}
