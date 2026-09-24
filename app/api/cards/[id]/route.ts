@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 import { parseCloze } from "@/lib/cloze";
+import { parseOcclusions, type OcclusionRegion } from "@/lib/occlusion";
 
 // Varias tarjetas de oclusión pueden compartir la misma imagen (la misma
 // frontImageUrl con distintos recuadros), así que antes de borrar un blob
@@ -36,14 +37,30 @@ export async function PATCH(
     frontImageUrl?: string | null;
     backImageUrl?: string | null;
     clozeAnswers?: string[];
+    occlusions?: OcclusionRegion[];
   } = {};
+
+  if ("occlusions" in body) {
+    const occlusions = parseOcclusions(body.occlusions);
+    if (!occlusions) {
+      return NextResponse.json(
+        { error: "Una tarjeta de oclusión necesita al menos una zona marcada" },
+        { status: 400 }
+      );
+    }
+    data.occlusions = occlusions;
+  }
 
   if (typeof body.front === "string") {
     const cloze = parseCloze(body.front.trim());
     data.front = cloze ? cloze.front : body.front.trim();
     if (cloze) data.clozeAnswers = cloze.answers;
   }
-  if (typeof body.back === "string") data.back = body.back.trim();
+  if (typeof body.back === "string") {
+    data.back = body.back.trim();
+  } else if (data.occlusions) {
+    data.back = data.occlusions.map((r) => r.label).join(", ");
+  }
   if (Array.isArray(body.tags)) {
     data.tags = body.tags.map((t: unknown) => String(t).trim()).filter(Boolean);
   }

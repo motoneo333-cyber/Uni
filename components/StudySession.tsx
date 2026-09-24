@@ -16,6 +16,7 @@ type StudyCard = {
   backImageUrl: string | null;
   occlusions: OcclusionRegion[] | null;
   clozeAnswers: string[] | null;
+  learningStep: number;
   tags: string[];
   subjectId: string;
   subjectName: string;
@@ -150,7 +151,14 @@ export default function StudySession() {
     <div className="space-y-4">
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-          <span>{card.subjectName}</span>
+          <span>
+            {card.subjectName}
+            {card.learningStep > 0 && (
+              <span className="ml-2 rounded bg-orange-100 px-1 text-[10px] font-medium text-orange-700 dark:bg-orange-900/50 dark:text-orange-400">
+                reaprendizaje
+              </span>
+            )}
+          </span>
           <span>Quedan {dueCount}</span>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">

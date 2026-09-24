@@ -14,6 +14,10 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
   200+ días como haría el SM-2 "de fábrica": dejaría de aparecer antes del
   final. Con el tope, siempre vas a tener varios repasos de cada tarjeta
   dentro de la ventana de un cuatrimestre.
+- Si marcás una tarjeta **"De nuevo"**, no espera hasta mañana: vuelve a
+  aparecer a los **10 minutos**, dentro de la misma sesión. Si la volvés a
+  fallar, recién ahí pasa a **1 día**. Solo cuando la acertás sale de ese
+  ciclo corto y entra al SM-2 normal (intervalos en días).
 - En **Estudiar** las tarjetas vencidas de todas las materias se mezclan al
   azar (intercalado) en vez de ir en bloque por materia — ayuda a discriminar
   entre temas parecidos.
@@ -34,10 +38,16 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
   huecos en el mismo texto. Al estudiarla, cada hueco se muestra como un
   campo de texto en el lugar exacto de la frase; al corregir se resalta en
   verde o rojo junto a la respuesta correcta. También funciona en el
-  importador masivo (ver más abajo).
+  importador masivo (ver más abajo). Una tarjeta de oclusión ya creada se
+  puede editar después: agregar zonas nuevas o quitar las que sobren (la
+  imagen en sí no se puede cambiar).
 - En cada materia podés tildar varias tarjetas y **eliminar seleccionadas**,
   o usar **eliminar todas** para vaciar la materia de un saque sin borrar la
   materia en sí.
+- **Estadísticas** (arriba en el menú): precisión de los últimos 30 días
+  (global y por materia, ordenada de peor a mejor para que salte lo que hay
+  que reforzar), actividad de los últimos 14 días, y cuántas tarjetas están
+  en reaprendizaje ahora mismo.
 - Acceso protegido con una sola contraseña (pensada para un solo usuario).
 - **Racha de días** en el inicio, modo oscuro automático (según el sistema),
   atajos de teclado en Estudiar (espacio para revelar, 1-4 para calificar),
@@ -121,6 +131,7 @@ ALTER TABLE "Card" DROP COLUMN IF EXISTS "occW";
 ALTER TABLE "Card" DROP COLUMN IF EXISTS "occH";
 ALTER TABLE "Card" ADD COLUMN IF NOT EXISTS "occlusions" JSONB;
 ALTER TABLE "Card" ADD COLUMN IF NOT EXISTS "clozeAnswers" JSONB;
+ALTER TABLE "Card" ADD COLUMN IF NOT EXISTS "learningStep" INTEGER NOT NULL DEFAULT 0;
 ```
 
 (Los `DROP COLUMN` son por si ya habías corrido una versión anterior de este
@@ -164,6 +175,3 @@ con la(s) palabra(s) ocultas.
   materias nuevas al plan.
 - El generador de Prisma queda en `app/generated/prisma` (ignorado por git,
   se regenera solo en cada `npm install`/`build`).
-- Posible mejora futura: pasos de re-aprendizaje el mismo día para las
-  tarjetas marcadas "De nuevo" (hoy vuelven a aparecer recién al día
-  siguiente, como en SM-2 clásico).

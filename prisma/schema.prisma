@@ -54,10 +54,14 @@ model Card {
 
   // Estado del algoritmo SM-2
   easeFactor  Float    @default(2.5)
-  interval    Int      @default(0) // días
+  interval    Int      @default(0) // días (0 mientras está en reaprendizaje)
   repetitions Int      @default(0)
   dueDate     DateTime @default(now())
   lastGrade   Int?
+  // Pasos de reaprendizaje el mismo día tras un "De nuevo": 0 = fuera de
+  // reaprendizaje (rige el SM-2 normal), >0 = cuántos pasos ya cumplió en
+  // la racha de fallos actual (ver LEARNING_STEPS_MINUTES en lib/sm2.ts).
+  learningStep Int     @default(0)
 
   reviews Review[]
 

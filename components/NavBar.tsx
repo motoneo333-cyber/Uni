@@ -41,6 +41,9 @@ export default function NavBar() {
           <Link href="/study" className={linkClass("/study")}>
             Estudiar
           </Link>
+          <Link href="/stats" className={linkClass("/stats")}>
+            Estadísticas
+          </Link>
         </div>
         <button
           onClick={logout}

@@ -46,6 +46,7 @@ export async function GET(request: Request) {
       backImageUrl: card.backImageUrl,
       occlusions: card.occlusions,
       clozeAnswers: card.clozeAnswers,
+      learningStep: card.learningStep,
       tags: card.tags,
       subjectId: card.subjectId,
       subjectName: card.subject.name,
