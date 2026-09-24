@@ -17,10 +17,10 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
 - Cada tarjeta puede tener una imagen opcional en el frente y/o el dorso
   (útil para anatomía, posturas, técnicas manuales).
 - **Oclusión de imagen**: en cada materia, pestaña "Oclusión de imagen" —
-  subís un diagrama, marcás con el mouse la zona con el nombre de una
-  estructura, escribís cuál es, y se crea una tarjeta que tapa esa zona en
-  el frente y la revela en el dorso. Se puede repetir sobre la misma imagen
-  para generar varias tarjetas (una por estructura).
+  subís un diagrama, marcás con el mouse cada zona con el nombre de una
+  estructura y escribís qué es. Todas las zonas marcadas sobre la misma
+  imagen quedan juntas en **una sola tarjeta**: el frente muestra la imagen
+  con todo tapado, el dorso la muestra con todo revelado y etiquetado.
 - Acceso protegido con una sola contraseña (pensada para un solo usuario).
 
 ## Stack
@@ -90,17 +90,20 @@ agregá las columnas nuevas. Pegá esto en el **SQL Editor** de Supabase (o
 corré `npm run db:push` de nuevo, que detecta el cambio de schema solo):
 
 ```sql
-ALTER TABLE "Card" ADD COLUMN "frontImageUrl" TEXT;
-ALTER TABLE "Card" ADD COLUMN "backImageUrl" TEXT;
-ALTER TABLE "Card" ADD COLUMN "occX" DOUBLE PRECISION;
-ALTER TABLE "Card" ADD COLUMN "occY" DOUBLE PRECISION;
-ALTER TABLE "Card" ADD COLUMN "occW" DOUBLE PRECISION;
-ALTER TABLE "Card" ADD COLUMN "occH" DOUBLE PRECISION;
+ALTER TABLE "Card" ADD COLUMN IF NOT EXISTS "frontImageUrl" TEXT;
+ALTER TABLE "Card" ADD COLUMN IF NOT EXISTS "backImageUrl" TEXT;
+ALTER TABLE "Card" DROP COLUMN IF EXISTS "occX";
+ALTER TABLE "Card" DROP COLUMN IF EXISTS "occY";
+ALTER TABLE "Card" DROP COLUMN IF EXISTS "occW";
+ALTER TABLE "Card" DROP COLUMN IF EXISTS "occH";
+ALTER TABLE "Card" ADD COLUMN IF NOT EXISTS "occlusions" JSONB;
 ```
 
-(Si ya corriste el `ALTER TABLE` de `frontImageUrl`/`backImageUrl` antes,
-pegá solo las 4 líneas de `occX`/`occY`/`occW`/`occH` — las de imagen ya
-las tenés.)
+(Los `DROP COLUMN` son por si ya habías corrido una versión anterior de este
+mismo `ALTER TABLE` que guardaba una sola zona por tarjeta — ahora todas las
+zonas de una imagen se guardan juntas en la columna `occlusions`. Los `IF
+EXISTS`/`IF NOT EXISTS` hacen que sea seguro pegar este bloque completo aunque
+ya hayas corrido parte de él antes.)
 
 ## Desarrollo local
 

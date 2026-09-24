@@ -5,16 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+type OcclusionRegion = { x: number; y: number; w: number; h: number; label: string };
+
 type StudyCard = {
   id: string;
   front: string;
   back: string;
   frontImageUrl: string | null;
   backImageUrl: string | null;
-  occX: number | null;
-  occY: number | null;
-  occW: number | null;
-  occH: number | null;
+  occlusions: OcclusionRegion[] | null;
   tags: string[];
   subjectId: string;
   subjectName: string;
@@ -83,7 +82,7 @@ export default function StudySession() {
     );
   }
 
-  const isOcclusion = card.occW != null && card.occH != null;
+  const isOcclusion = Array.isArray(card.occlusions) && card.occlusions.length > 0;
 
   return (
     <div className="space-y-4">
@@ -96,17 +95,30 @@ export default function StudySession() {
         <div className="w-full">
           {isOcclusion && card.frontImageUrl ? (
             <div className="relative mx-auto mb-3 w-full">
-              {/* eslint-disable-next-line @next/next/no-img-element -- necesita tamaño natural sin letterboxing para que el recuadro coincida en % */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- necesita tamaño natural sin letterboxing para que los recuadros coincidan en % */}
               <img src={card.frontImageUrl} alt="" className="w-full h-auto block rounded-md" />
-              <div
-                className={`absolute ${revealed ? "border-2 border-emerald-500 bg-transparent" : "bg-zinc-800"}`}
-                style={{
-                  left: `${card.occX}%`,
-                  top: `${card.occY}%`,
-                  width: `${card.occW}%`,
-                  height: `${card.occH}%`,
-                }}
-              />
+              {card.occlusions!.map((r, i) => (
+                <div
+                  key={i}
+                  className={`absolute flex items-center justify-center overflow-hidden ${
+                    revealed
+                      ? "border-2 border-emerald-500 bg-transparent"
+                      : "bg-zinc-800"
+                  }`}
+                  style={{
+                    left: `${r.x}%`,
+                    top: `${r.y}%`,
+                    width: `${r.w}%`,
+                    height: `${r.h}%`,
+                  }}
+                >
+                  {revealed && (
+                    <span className="text-[10px] font-medium text-emerald-900 bg-white/80 px-0.5 truncate">
+                      {r.label}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           ) : (
             card.frontImageUrl && (

@@ -11,7 +11,7 @@ type Card = {
   back: string;
   frontImageUrl: string | null;
   backImageUrl: string | null;
-  occW: number | null;
+  occlusions: { x: number; y: number; w: number; h: number; label: string }[] | null;
   tags: string[];
   interval: number;
   repetitions: number;
@@ -290,9 +290,10 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                       )}
                       <div className="min-w-0">
                         <p className="text-sm text-zinc-900">
-                          {c.occW != null && (
+                          {c.occlusions && c.occlusions.length > 0 && (
                             <span className="mr-1 rounded bg-emerald-100 px-1 text-[10px] font-medium text-emerald-700">
-                              oclusión
+                              oclusión · {c.occlusions.length} zona
+                              {c.occlusions.length === 1 ? "" : "s"}
                             </span>
                           )}
                           {c.front}

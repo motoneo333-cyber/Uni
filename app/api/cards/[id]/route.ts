@@ -34,10 +34,6 @@ export async function PATCH(
     tags?: string[];
     frontImageUrl?: string | null;
     backImageUrl?: string | null;
-    occX?: number | null;
-    occY?: number | null;
-    occW?: number | null;
-    occH?: number | null;
   } = {};
 
   if (typeof body.front === "string") data.front = body.front.trim();
@@ -47,10 +43,6 @@ export async function PATCH(
   }
   if ("frontImageUrl" in body) data.frontImageUrl = body.frontImageUrl || null;
   if ("backImageUrl" in body) data.backImageUrl = body.backImageUrl || null;
-  if ("occX" in body) data.occX = body.occX == null ? null : Number(body.occX);
-  if ("occY" in body) data.occY = body.occY == null ? null : Number(body.occY);
-  if ("occW" in body) data.occW = body.occW == null ? null : Number(body.occW);
-  if ("occH" in body) data.occH = body.occH == null ? null : Number(body.occH);
 
   const previous =
     "frontImageUrl" in data || "backImageUrl" in data
