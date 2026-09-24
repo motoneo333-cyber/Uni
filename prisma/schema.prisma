@@ -44,6 +44,10 @@ model Card {
   // [{ x, y, w, h, label }, ...]. Si es null, la tarjeta es normal.
   // Todas las zonas de una misma imagen viven en UNA sola tarjeta.
   occlusions Json?
+  // Concepto con hueco: front guarda el texto con cada hueco reemplazado por
+  // el marcador "{{}}", y acá van las respuestas correctas en el mismo
+  // orden en que aparecen los huecos. Si es null, la tarjeta no es cloze.
+  clozeAnswers Json?
   tags      String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

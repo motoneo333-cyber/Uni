@@ -28,6 +28,13 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
   tapada tiene un número y un campo de texto para escribir la respuesta a
   mano; al corregir se revela cada zona en verde (correcta) o rojo
   (incorrecta) junto al nombre real.
+- **Concepto con hueco** (cloze): pestaña "Concepto con hueco" — escribís
+  una frase y encerrás entre doble corchete la(s) palabra(s) que querés
+  ocultar, ej. `La mitosis tiene [[4]] fases.` Podés dejar uno o varios
+  huecos en el mismo texto. Al estudiarla, cada hueco se muestra como un
+  campo de texto en el lugar exacto de la frase; al corregir se resalta en
+  verde o rojo junto a la respuesta correcta. También funciona en el
+  importador masivo (ver más abajo).
 - Acceso protegido con una sola contraseña (pensada para un solo usuario).
 - **Racha de días** en el inicio, modo oscuro automático (según el sistema),
   atajos de teclado en Estudiar (espacio para revelar, 1-4 para calificar),
@@ -108,6 +115,7 @@ ALTER TABLE "Card" DROP COLUMN IF EXISTS "occY";
 ALTER TABLE "Card" DROP COLUMN IF EXISTS "occW";
 ALTER TABLE "Card" DROP COLUMN IF EXISTS "occH";
 ALTER TABLE "Card" ADD COLUMN IF NOT EXISTS "occlusions" JSONB;
+ALTER TABLE "Card" ADD COLUMN IF NOT EXISTS "clozeAnswers" JSONB;
 ```
 
 (Los `DROP COLUMN` son por si ya habías corrido una versión anterior de este
@@ -136,9 +144,13 @@ una tarjeta por línea:
 ```
 ¿Qué es la biodisponibilidad? | Fracción de fármaco que llega inalterada a la circulación sistémica | farmacocinética
 ¿Qué es un agonista parcial? | Fármaco que activa el receptor con eficacia submáxima
+El [[diafragma]] es el principal músculo de la inspiración. | | fisiología
 ```
 
-El tercer campo (tags, separados por coma) es opcional.
+El tercer campo (tags, separados por coma) es opcional. Si la pregunta tiene
+palabras entre doble corchete (`[[...]]`), la tarjeta se crea como "concepto
+con hueco" y el segundo campo (respuesta) también es opcional — se arma solo
+con la(s) palabra(s) ocultas.
 
 ## Notas
 

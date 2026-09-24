@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { parseCloze } from "@/lib/cloze";
 
 type OcclusionRegion = { x: number; y: number; w: number; h: number; label: string };
 
@@ -46,19 +47,24 @@ export async function POST(
 ) {
   const { id } = await params;
   const body = await request.json();
-  const front = String(body.front ?? "").trim();
+  const rawFront = String(body.front ?? "").trim();
   const frontImageUrl = body.frontImageUrl ? String(body.frontImageUrl) : null;
   const backImageUrl = body.backImageUrl ? String(body.backImageUrl) : null;
   const tags = Array.isArray(body.tags)
     ? body.tags.map((t: unknown) => String(t).trim()).filter(Boolean)
     : [];
   const occlusions = parseOcclusions(body.occlusions);
+  const cloze = occlusions ? null : parseCloze(rawFront);
+  const front = cloze ? cloze.front : rawFront;
 
-  // Una tarjeta de oclusión no necesita "back" escrito a mano: se arma solo
-  // con las etiquetas de las zonas marcadas.
+  // Una tarjeta de oclusión o de concepto con hueco no necesita "back"
+  // escrito a mano: se arma solo con las etiquetas/respuestas ocultas.
+  const backRaw = typeof body.back === "string" ? body.back.trim() : "";
   const back = occlusions
-    ? String(body.back ?? occlusions.map((r) => r.label).join(", ")).trim()
-    : String(body.back ?? "").trim();
+    ? backRaw || occlusions.map((r) => r.label).join(", ")
+    : cloze
+      ? backRaw || cloze.answers.join(", ")
+      : backRaw;
 
   if (!front || !back) {
     return NextResponse.json(
@@ -81,6 +87,7 @@ export async function POST(
       frontImageUrl,
       backImageUrl,
       ...(occlusions ? { occlusions } : {}),
+      ...(cloze ? { clozeAnswers: cloze.answers } : {}),
       tags,
     },
   });

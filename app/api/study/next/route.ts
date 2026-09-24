@@ -45,6 +45,7 @@ export async function GET(request: Request) {
       frontImageUrl: card.frontImageUrl,
       backImageUrl: card.backImageUrl,
       occlusions: card.occlusions,
+      clozeAnswers: card.clozeAnswers,
       tags: card.tags,
       subjectId: card.subjectId,
       subjectName: card.subject.name,

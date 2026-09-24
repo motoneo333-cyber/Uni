@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { splitClozeFront } from "@/lib/cloze";
 
 type OcclusionRegion = { x: number; y: number; w: number; h: number; label: string };
 
@@ -14,6 +15,7 @@ type StudyCard = {
   frontImageUrl: string | null;
   backImageUrl: string | null;
   occlusions: OcclusionRegion[] | null;
+  clozeAnswers: string[] | null;
   tags: string[];
   subjectId: string;
   subjectName: string;
@@ -59,9 +61,12 @@ export default function StudySession() {
     const data = await res.json();
     setCard(data.card);
     setDueCount(data.dueCount);
-    setGuesses(
-      Array.isArray(data.card?.occlusions) ? data.card.occlusions.map(() => "") : []
-    );
+    const blankCount = Array.isArray(data.card?.occlusions)
+      ? data.card.occlusions.length
+      : Array.isArray(data.card?.clozeAnswers)
+        ? data.card.clozeAnswers.length
+        : 0;
+    setGuesses(Array.from({ length: blankCount }, () => ""));
     setLoading(false);
   }, [subjectId]);
 
@@ -82,6 +87,8 @@ export default function StudySession() {
   }
 
   const isOcclusion = Array.isArray(card?.occlusions) && card.occlusions.length > 0;
+  const isCloze = Array.isArray(card?.clozeAnswers) && card.clozeAnswers.length > 0;
+  const hasTypedBlanks = isOcclusion || isCloze;
 
   // Atajos de teclado: espacio para revelar (tarjetas simples), 1-4 para calificar.
   useEffect(() => {
@@ -90,7 +97,7 @@ export default function StudySession() {
       if (!card) return;
 
       if (!revealed) {
-        if (!isOcclusion && (e.key === " " || e.key === "Enter")) {
+        if (!hasTypedBlanks && (e.key === " " || e.key === "Enter")) {
           e.preventDefault();
           setRevealed(true);
         }
@@ -106,7 +113,7 @@ export default function StudySession() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card, revealed, isOcclusion]);
+  }, [card, revealed, hasTypedBlanks]);
 
   if (loading && !card) {
     return (
@@ -203,9 +210,63 @@ export default function StudySession() {
               </div>
             )
           )}
-          <p className="text-base text-zinc-900 whitespace-pre-wrap dark:text-zinc-100">
-            {card.front}
-          </p>
+          {isCloze ? (
+            <p className="text-base text-zinc-900 whitespace-pre-wrap leading-loose dark:text-zinc-100">
+              {splitClozeFront(card.front).map((segment, i, arr) => (
+                <span key={i}>
+                  {segment}
+                  {i < arr.length - 1 &&
+                    (revealed ? (
+                      <span
+                        className={`mx-1 rounded px-1.5 py-0.5 font-medium ${
+                          normalize(guesses[i] ?? "") === normalize(card.clozeAnswers![i])
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-400"
+                        }`}
+                      >
+                        {card.clozeAnswers![i]}
+                      </span>
+                    ) : (
+                      <input
+                        value={guesses[i] ?? ""}
+                        onChange={(e) =>
+                          setGuesses((g) => {
+                            const next = [...g];
+                            next[i] = e.target.value;
+                            return next;
+                          })
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter") return;
+                          const nextInput = document.getElementById(`cloze-guess-${i + 1}`);
+                          if (nextInput) nextInput.focus();
+                          else setRevealed(true);
+                        }}
+                        id={`cloze-guess-${i}`}
+                        autoFocus={i === 0}
+                        size={Math.max(4, (card.clozeAnswers![i] ?? "").length)}
+                        className="mx-1 rounded border-b-2 border-indigo-400 bg-transparent px-1 text-center align-baseline text-base outline-none focus:border-indigo-600 dark:text-zinc-100"
+                      />
+                    ))}
+                </span>
+              ))}
+            </p>
+          ) : (
+            <p className="text-base text-zinc-900 whitespace-pre-wrap dark:text-zinc-100">
+              {card.front}
+            </p>
+          )}
+
+          {isCloze && revealed && (
+            <p className="mt-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              {
+                card.clozeAnswers!.filter(
+                  (a, i) => normalize(guesses[i] ?? "") === normalize(a)
+                ).length
+              }{" "}
+              / {card.clozeAnswers!.length} correctas
+            </p>
+          )}
 
           {isOcclusion && !revealed && (
             <div className="mt-4 space-y-2 text-left">
@@ -244,7 +305,7 @@ export default function StudySession() {
             </p>
           )}
 
-          {revealed && !isOcclusion && (
+          {revealed && !isOcclusion && !isCloze && (
             <>
               <hr className="my-4 border-zinc-200 dark:border-zinc-800" />
               {card.backImageUrl && (
@@ -271,9 +332,9 @@ export default function StudySession() {
           onClick={() => setRevealed(true)}
           className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
         >
-          {isOcclusion ? "Corregir" : "Mostrar respuesta"}
+          {hasTypedBlanks ? "Corregir" : "Mostrar respuesta"}
           <span className="ml-2 hidden text-indigo-200 sm:inline">
-            {isOcclusion ? "" : "(espacio)"}
+            {hasTypedBlanks ? "" : "(espacio)"}
           </span>
         </button>
       ) : (
