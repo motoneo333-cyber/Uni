@@ -1,0 +1,68 @@
+// Esquema de la app de estudio (repetición espaciada) para
+// Licenciatura en Kinesiología y Fisiatría - UNAHUR.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Campo {
+  CFC // Campo de Formación Común
+  CFB // Campo de Formación Básica
+  CFE // Campo de Formación Específica
+  CIC // Campo de Integración Curricular
+  ACA // Actividades Curriculares Acreditables
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  name        String
+  year        Int // 1 a 4
+  quarter     Int // 1 o 2 (cuatrimestre)
+  campo       Campo
+  order       Int // orden dentro del plan de estudios
+  createdAt   DateTime @default(now())
+  cards       Card[]
+
+  @@unique([name])
+}
+
+model Card {
+  id        String   @id @default(cuid())
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  front     String
+  back      String
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Estado del algoritmo SM-2
+  easeFactor  Float    @default(2.5)
+  interval    Int      @default(0) // días
+  repetitions Int      @default(0)
+  dueDate     DateTime @default(now())
+  lastGrade   Int?
+
+  reviews Review[]
+
+  @@index([subjectId])
+  @@index([dueDate])
+}
+
+model Review {
+  id              String   @id @default(cuid())
+  cardId          String
+  card            Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  grade           Int // 0-5 (SM-2)
+  intervalAfter   Int
+  easeFactorAfter Float
+  reviewedAt      DateTime @default(now())
+
+  @@index([cardId])
+  @@index([reviewedAt])
+}
