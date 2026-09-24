@@ -9,6 +9,11 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
 
 - Cada tarjeta (pregunta/respuesta) tiene su propio estado de repaso con el
   algoritmo **SM-2**: cuanto mejor la recordás, más se espacia el próximo repaso.
+  El intervalo tiene un **tope de 60 días** — como todas las materias son
+  cuatrimestrales (no anuales), no tiene sentido que una tarjeta se espacie
+  200+ días como haría el SM-2 "de fábrica": dejaría de aparecer antes del
+  final. Con el tope, siempre vas a tener varios repasos de cada tarjeta
+  dentro de la ventana de un cuatrimestre.
 - En **Estudiar** las tarjetas vencidas de todas las materias se mezclan al
   azar (intercalado) en vez de ir en bloque por materia — ayuda a discriminar
   entre temas parecidos.
