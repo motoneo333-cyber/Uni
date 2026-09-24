@@ -19,17 +19,34 @@ export default function ImagePicker({
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setError(null);
+
+    if (file.size > 4 * 1024 * 1024) {
+      setError("La imagen no puede pesar más de 4MB");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "No se pudo subir la imagen");
+
+      let data: { url?: string; error?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        // El servidor devolvió algo que no es JSON (p. ej. una página de
+        // error de la plataforma); igual mostramos un mensaje concreto.
+      }
+
+      if (!res.ok || !data.url) {
+        setError(data.error ?? `No se pudo subir la imagen (error ${res.status})`);
         return;
       }
       onChange(data.url);
+    } catch {
+      setError("No se pudo conectar con el servidor. Probá de nuevo.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
