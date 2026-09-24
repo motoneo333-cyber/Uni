@@ -42,6 +42,8 @@ export async function GET(request: Request) {
       id: card.id,
       front: card.front,
       back: card.back,
+      frontImageUrl: card.frontImageUrl,
+      backImageUrl: card.backImageUrl,
       tags: card.tags,
       subjectId: card.subjectId,
       subjectName: card.subject.name,

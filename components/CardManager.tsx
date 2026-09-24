@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
+import ImagePicker from "./ImagePicker";
 
 type Card = {
   id: string;
   front: string;
   back: string;
+  frontImageUrl: string | null;
+  backImageUrl: string | null;
   tags: string[];
   interval: number;
   repetitions: number;
@@ -17,6 +21,8 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
   const [loading, setLoading] = useState(true);
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
+  const [frontImageUrl, setFrontImageUrl] = useState<string | null>(null);
+  const [backImageUrl, setBackImageUrl] = useState<string | null>(null);
   const [tags, setTags] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -24,6 +30,8 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFront, setEditFront] = useState("");
   const [editBack, setEditBack] = useState("");
+  const [editFrontImageUrl, setEditFrontImageUrl] = useState<string | null>(null);
+  const [editBackImageUrl, setEditBackImageUrl] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -49,11 +57,13 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
     const res = await fetch(`/api/subjects/${subjectId}/cards`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ front, back, tags: tagList }),
+      body: JSON.stringify({ front, back, frontImageUrl, backImageUrl, tags: tagList }),
     });
     if (res.ok) {
       setFront("");
       setBack("");
+      setFrontImageUrl(null);
+      setBackImageUrl(null);
       setTags("");
       load();
     }
@@ -87,13 +97,20 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
     setEditingId(card.id);
     setEditFront(card.front);
     setEditBack(card.back);
+    setEditFrontImageUrl(card.frontImageUrl);
+    setEditBackImageUrl(card.backImageUrl);
   }
 
   async function saveEdit(id: string) {
     const res = await fetch(`/api/cards/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ front: editFront, back: editBack }),
+      body: JSON.stringify({
+        front: editFront,
+        back: editBack,
+        frontImageUrl: editFrontImageUrl,
+        backImageUrl: editBackImageUrl,
+      }),
     });
     if (res.ok) {
       setEditingId(null);
@@ -115,6 +132,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
           rows={2}
           className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
         />
+        <ImagePicker label="Imagen del frente (opcional)" value={frontImageUrl} onChange={setFrontImageUrl} />
         <textarea
           value={back}
           onChange={(e) => setBack(e.target.value)}
@@ -122,6 +140,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
           rows={2}
           className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
         />
+        <ImagePicker label="Imagen del dorso (opcional)" value={backImageUrl} onChange={setBackImageUrl} />
         <input
           value={tags}
           onChange={(e) => setTags(e.target.value)}
@@ -190,11 +209,21 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                       rows={2}
                       className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
                     />
+                    <ImagePicker
+                      label="Imagen del frente"
+                      value={editFrontImageUrl}
+                      onChange={setEditFrontImageUrl}
+                    />
                     <textarea
                       value={editBack}
                       onChange={(e) => setEditBack(e.target.value)}
                       rows={2}
                       className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                    />
+                    <ImagePicker
+                      label="Imagen del dorso"
+                      value={editBackImageUrl}
+                      onChange={setEditBackImageUrl}
                     />
                     <div className="flex gap-2">
                       <button
@@ -213,14 +242,27 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                   </div>
                 ) : (
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm text-zinc-900">{c.front}</p>
-                      <p className="text-sm text-zinc-500">{c.back}</p>
-                      <p className="text-xs text-zinc-400 mt-1">
-                        {c.repetitions === 0
-                          ? "Sin repasar"
-                          : `${c.interval}d · vence ${new Date(c.dueDate).toLocaleDateString("es-AR")}`}
-                      </p>
+                    <div className="min-w-0 flex items-start gap-3">
+                      {(c.frontImageUrl || c.backImageUrl) && (
+                        <div className="relative h-12 w-12 shrink-0 rounded-md border border-zinc-200 overflow-hidden">
+                          <Image
+                            src={(c.frontImageUrl ?? c.backImageUrl)!}
+                            alt=""
+                            fill
+                            unoptimized
+                            className="object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm text-zinc-900">{c.front}</p>
+                        <p className="text-sm text-zinc-500">{c.back}</p>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          {c.repetitions === 0
+                            ? "Sin repasar"
+                            : `${c.interval}d · vence ${new Date(c.dueDate).toLocaleDateString("es-AR")}`}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button

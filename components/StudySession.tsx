@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -8,6 +9,8 @@ type StudyCard = {
   id: string;
   front: string;
   back: string;
+  frontImageUrl: string | null;
+  backImageUrl: string | null;
   tags: string[];
   subjectId: string;
   subjectName: string;
@@ -84,11 +87,33 @@ export default function StudySession() {
       </div>
 
       <div className="min-h-[220px] rounded-xl border border-zinc-200 bg-white p-6 flex items-center justify-center text-center">
-        <div>
+        <div className="w-full">
+          {card.frontImageUrl && (
+            <div className="relative mx-auto mb-3 h-48 w-full">
+              <Image
+                src={card.frontImageUrl}
+                alt=""
+                fill
+                unoptimized
+                className="object-contain"
+              />
+            </div>
+          )}
           <p className="text-base text-zinc-900 whitespace-pre-wrap">{card.front}</p>
           {revealed && (
             <>
               <hr className="my-4 border-zinc-200" />
+              {card.backImageUrl && (
+                <div className="relative mx-auto mb-3 h-48 w-full">
+                  <Image
+                    src={card.backImageUrl}
+                    alt=""
+                    fill
+                    unoptimized
+                    className="object-contain"
+                  />
+                </div>
+              )}
               <p className="text-base text-zinc-700 whitespace-pre-wrap">{card.back}</p>
             </>
           )}

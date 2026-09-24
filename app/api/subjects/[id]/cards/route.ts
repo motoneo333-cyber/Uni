@@ -21,6 +21,8 @@ export async function POST(
   const body = await request.json();
   const front = String(body.front ?? "").trim();
   const back = String(body.back ?? "").trim();
+  const frontImageUrl = body.frontImageUrl ? String(body.frontImageUrl) : null;
+  const backImageUrl = body.backImageUrl ? String(body.backImageUrl) : null;
   const tags = Array.isArray(body.tags)
     ? body.tags.map((t: unknown) => String(t).trim()).filter(Boolean)
     : [];
@@ -33,7 +35,7 @@ export async function POST(
   }
 
   const card = await prisma.card.create({
-    data: { subjectId: id, front, back, tags },
+    data: { subjectId: id, front, back, frontImageUrl, backImageUrl, tags },
   });
   return NextResponse.json(card, { status: 201 });
 }

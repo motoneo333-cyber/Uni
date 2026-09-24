@@ -37,6 +37,8 @@ model Card {
   subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   front     String
   back      String
+  frontImageUrl String?
+  backImageUrl  String?
   tags      String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
