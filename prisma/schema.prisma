@@ -39,6 +39,12 @@ model Card {
   back      String
   frontImageUrl String?
   backImageUrl  String?
+  // Oclusión de imagen: rectángulo (en % de ancho/alto) que se tapa en el
+  // frente sobre frontImageUrl. Si occW/occH son null, la tarjeta es normal.
+  occX      Float?
+  occY      Float?
+  occW      Float?
+  occH      Float?
   tags      String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

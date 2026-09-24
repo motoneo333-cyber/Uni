@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import ImagePicker from "./ImagePicker";
+import OcclusionEditor from "./OcclusionEditor";
 
 type Card = {
   id: string;
@@ -10,6 +11,7 @@ type Card = {
   back: string;
   frontImageUrl: string | null;
   backImageUrl: string | null;
+  occW: number | null;
   tags: string[];
   interval: number;
   repetitions: number;
@@ -32,6 +34,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
   const [editBack, setEditBack] = useState("");
   const [editFrontImageUrl, setEditFrontImageUrl] = useState<string | null>(null);
   const [editBackImageUrl, setEditBackImageUrl] = useState<string | null>(null);
+  const [mode, setMode] = useState<"simple" | "occlusion">("simple");
 
   async function load() {
     setLoading(true);
@@ -120,40 +123,71 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
 
   return (
     <div className="space-y-6">
-      <form
-        onSubmit={addCard}
-        className="rounded-xl border border-zinc-200 bg-white p-4 space-y-2"
-      >
-        <p className="text-sm font-medium text-zinc-900">Nueva tarjeta</p>
-        <textarea
-          value={front}
-          onChange={(e) => setFront(e.target.value)}
-          placeholder="Pregunta / frente"
-          rows={2}
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
-        />
-        <ImagePicker label="Imagen del frente (opcional)" value={frontImageUrl} onChange={setFrontImageUrl} />
-        <textarea
-          value={back}
-          onChange={(e) => setBack(e.target.value)}
-          placeholder="Respuesta / dorso"
-          rows={2}
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
-        />
-        <ImagePicker label="Imagen del dorso (opcional)" value={backImageUrl} onChange={setBackImageUrl} />
-        <input
-          value={tags}
-          onChange={(e) => setTags(e.target.value)}
-          placeholder="Tags (opcional, separados por coma)"
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
-        />
-        <button
-          type="submit"
-          className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-        >
-          Agregar
-        </button>
-      </form>
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-3">
+        <div className="flex gap-1 text-sm">
+          <button
+            type="button"
+            onClick={() => setMode("simple")}
+            className={`rounded-md px-3 py-1.5 font-medium ${
+              mode === "simple" ? "bg-zinc-900 text-white" : "text-zinc-500 hover:bg-zinc-100"
+            }`}
+          >
+            Tarjeta simple
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("occlusion")}
+            className={`rounded-md px-3 py-1.5 font-medium ${
+              mode === "occlusion" ? "bg-zinc-900 text-white" : "text-zinc-500 hover:bg-zinc-100"
+            }`}
+          >
+            Oclusión de imagen
+          </button>
+        </div>
+
+        {mode === "simple" ? (
+          <form onSubmit={addCard} className="space-y-2">
+            <textarea
+              value={front}
+              onChange={(e) => setFront(e.target.value)}
+              placeholder="Pregunta / frente"
+              rows={2}
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+            />
+            <ImagePicker
+              label="Imagen del frente (opcional)"
+              value={frontImageUrl}
+              onChange={setFrontImageUrl}
+            />
+            <textarea
+              value={back}
+              onChange={(e) => setBack(e.target.value)}
+              placeholder="Respuesta / dorso"
+              rows={2}
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+            />
+            <ImagePicker
+              label="Imagen del dorso (opcional)"
+              value={backImageUrl}
+              onChange={setBackImageUrl}
+            />
+            <input
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="Tags (opcional, separados por coma)"
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+            />
+            <button
+              type="submit"
+              className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+            >
+              Agregar
+            </button>
+          </form>
+        ) : (
+          <OcclusionEditor subjectId={subjectId} onCreated={load} />
+        )}
+      </div>
 
       <div className="rounded-xl border border-zinc-200 bg-white p-4">
         <button
@@ -255,7 +289,14 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm text-zinc-900">{c.front}</p>
+                        <p className="text-sm text-zinc-900">
+                          {c.occW != null && (
+                            <span className="mr-1 rounded bg-emerald-100 px-1 text-[10px] font-medium text-emerald-700">
+                              oclusión
+                            </span>
+                          )}
+                          {c.front}
+                        </p>
                         <p className="text-sm text-zinc-500">{c.back}</p>
                         <p className="text-xs text-zinc-400 mt-1">
                           {c.repetitions === 0
