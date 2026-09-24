@@ -6,6 +6,7 @@ import ImagePicker from "./ImagePicker";
 import OcclusionEditor from "./OcclusionEditor";
 import ConfirmDialog from "./ConfirmDialog";
 import { toast } from "@/lib/toast";
+import { renderClozeSource, splitClozeFront } from "@/lib/cloze";
 
 type Card = {
   id: string;
@@ -14,6 +15,7 @@ type Card = {
   frontImageUrl: string | null;
   backImageUrl: string | null;
   occlusions: { x: number; y: number; w: number; h: number; label: string }[] | null;
+  clozeAnswers: string[] | null;
   tags: string[];
   interval: number;
   repetitions: number;
@@ -38,7 +40,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
   const [editBack, setEditBack] = useState("");
   const [editFrontImageUrl, setEditFrontImageUrl] = useState<string | null>(null);
   const [editBackImageUrl, setEditBackImageUrl] = useState<string | null>(null);
-  const [mode, setMode] = useState<"simple" | "occlusion">("simple");
+  const [mode, setMode] = useState<"simple" | "cloze" | "occlusion">("simple");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   async function load() {
@@ -57,7 +59,8 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
 
   async function addCard(e: React.FormEvent) {
     e.preventDefault();
-    if (!front.trim() || !back.trim()) return;
+    if (!front.trim()) return;
+    if (mode === "simple" && !back.trim()) return;
     const tagList = tags
       .split(",")
       .map((t) => t.trim())
@@ -65,7 +68,13 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
     const res = await fetch(`/api/subjects/${subjectId}/cards`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ front, back, frontImageUrl, backImageUrl, tags: tagList }),
+      body: JSON.stringify({
+        front,
+        back: back.trim() || undefined,
+        frontImageUrl,
+        backImageUrl,
+        tags: tagList,
+      }),
     });
     if (res.ok) {
       setFront("");
@@ -109,7 +118,11 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
 
   function startEdit(card: Card) {
     setEditingId(card.id);
-    setEditFront(card.front);
+    setEditFront(
+      card.clozeAnswers && card.clozeAnswers.length > 0
+        ? renderClozeSource(card.front, card.clozeAnswers)
+        : card.front
+    );
     setEditBack(card.back);
     setEditFrontImageUrl(card.frontImageUrl);
     setEditBackImageUrl(card.backImageUrl);
@@ -152,6 +165,17 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
           </button>
           <button
             type="button"
+            onClick={() => setMode("cloze")}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              mode === "cloze"
+                ? "bg-indigo-600 text-white"
+                : "text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+          >
+            Concepto con hueco
+          </button>
+          <button
+            type="button"
             onClick={() => setMode("occlusion")}
             className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
               mode === "occlusion"
@@ -163,13 +187,26 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
           </button>
         </div>
 
-        {mode === "simple" ? (
+        {mode === "occlusion" ? (
+          <OcclusionEditor subjectId={subjectId} onCreated={load} />
+        ) : (
           <form onSubmit={addCard} className="space-y-2">
+            {mode === "cloze" && (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Escribí el concepto y encerrá entre doble corchete la(s) palabra(s) que
+                querés ocultar. Ej: <code>La mitosis tiene [[4]] fases.</code> Podés dejar
+                uno o varios huecos en el mismo texto.
+              </p>
+            )}
             <textarea
               value={front}
               onChange={(e) => setFront(e.target.value)}
-              placeholder="Pregunta / frente"
-              rows={2}
+              placeholder={
+                mode === "cloze"
+                  ? "La mitosis tiene [[4]] fases y produce células [[genéticamente idénticas]]."
+                  : "Pregunta / frente"
+              }
+              rows={mode === "cloze" ? 3 : 2}
               className={inputClass}
             />
             <ImagePicker
@@ -180,7 +217,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
             <textarea
               value={back}
               onChange={(e) => setBack(e.target.value)}
-              placeholder="Respuesta / dorso"
+              placeholder={mode === "cloze" ? "Respuesta manual (opcional)" : "Respuesta / dorso"}
               rows={2}
               className={inputClass}
             />
@@ -202,8 +239,6 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
               Agregar
             </button>
           </form>
-        ) : (
-          <OcclusionEditor subjectId={subjectId} onCreated={load} />
         )}
       </div>
 
@@ -322,7 +357,14 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                               {c.occlusions.length === 1 ? "" : "s"}
                             </span>
                           )}
-                          {c.front}
+                          {c.clozeAnswers && c.clozeAnswers.length > 0 && (
+                            <span className="mr-1 rounded bg-indigo-100 px-1 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400">
+                              hueco · {c.clozeAnswers.length}
+                            </span>
+                          )}
+                          {c.clozeAnswers && c.clozeAnswers.length > 0
+                            ? splitClozeFront(c.front).join("_____")
+                            : c.front}
                         </p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400">{c.back}</p>
                         <p className="text-xs text-zinc-400 mt-1 dark:text-zinc-500">
