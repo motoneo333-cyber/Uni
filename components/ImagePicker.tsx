@@ -55,16 +55,16 @@ export default function ImagePicker({
 
   return (
     <div className="space-y-1">
-      <p className="text-xs text-zinc-500">{label}</p>
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
       {value ? (
         <div className="flex items-center gap-2">
-          <div className="relative h-16 w-16 shrink-0 rounded-md border border-zinc-200 overflow-hidden">
+          <div className="relative h-16 w-16 shrink-0 rounded-md border border-zinc-200 overflow-hidden dark:border-zinc-700">
             <Image src={value} alt="" fill unoptimized className="object-cover" />
           </div>
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="text-xs text-red-500 hover:text-red-700"
+            className="text-xs text-red-500 hover:text-red-700 dark:text-red-400"
           >
             Quitar imagen
           </button>
@@ -76,11 +76,11 @@ export default function ImagePicker({
           accept="image/png,image/jpeg,image/webp,image/gif"
           onChange={(e) => handleFile(e.target.files?.[0])}
           disabled={uploading}
-          className="text-xs text-zinc-600"
+          className="text-xs text-zinc-600 dark:text-zinc-300"
         />
       )}
-      {uploading && <p className="text-xs text-zinc-400">Subiendo...</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {uploading && <p className="text-xs text-zinc-400 dark:text-zinc-500">Subiendo...</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

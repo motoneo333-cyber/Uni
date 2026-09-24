@@ -17,10 +17,15 @@ export default async function SubjectPage({
   return (
     <div className="space-y-4">
       <div>
-        <Link href="/subjects" className="text-xs text-zinc-500 hover:underline">
+        <Link
+          href="/subjects"
+          className="text-xs text-zinc-500 hover:underline dark:text-zinc-400"
+        >
           ← Materias
         </Link>
-        <h1 className="text-lg font-semibold text-zinc-900 mt-1">{subject.name}</h1>
+        <h1 className="text-lg font-semibold text-zinc-900 mt-1 dark:text-zinc-100">
+          {subject.name}
+        </h1>
       </div>
       <CardManager subjectId={subject.id} />
     </div>

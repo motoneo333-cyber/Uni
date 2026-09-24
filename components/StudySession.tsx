@@ -19,11 +19,11 @@ type StudyCard = {
   subjectName: string;
 };
 
-const GRADES: { grade: number; label: string; className: string }[] = [
-  { grade: 1, label: "De nuevo", className: "bg-red-500 hover:bg-red-600" },
-  { grade: 3, label: "Difícil", className: "bg-orange-500 hover:bg-orange-600" },
-  { grade: 4, label: "Bien", className: "bg-green-600 hover:bg-green-700" },
-  { grade: 5, label: "Fácil", className: "bg-blue-600 hover:bg-blue-700" },
+const GRADES: { grade: number; label: string; className: string; key: string }[] = [
+  { grade: 1, label: "De nuevo", className: "bg-red-500 hover:bg-red-600", key: "1" },
+  { grade: 3, label: "Difícil", className: "bg-orange-500 hover:bg-orange-600", key: "2" },
+  { grade: 4, label: "Bien", className: "bg-green-600 hover:bg-green-700", key: "3" },
+  { grade: 5, label: "Fácil", className: "bg-blue-600 hover:bg-blue-700", key: "4" },
 ];
 
 function normalize(s: string): string {
@@ -32,6 +32,12 @@ function normalize(s: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
+}
+
+function isTypingTarget(el: Element | null): boolean {
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || (el as HTMLElement).isContentEditable;
 }
 
 export default function StudySession() {
@@ -75,35 +81,80 @@ export default function StudySession() {
     loadNext();
   }
 
+  const isOcclusion = Array.isArray(card?.occlusions) && card.occlusions.length > 0;
+
+  // Atajos de teclado: espacio para revelar (tarjetas simples), 1-4 para calificar.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (isTypingTarget(document.activeElement)) return;
+      if (!card) return;
+
+      if (!revealed) {
+        if (!isOcclusion && (e.key === " " || e.key === "Enter")) {
+          e.preventDefault();
+          setRevealed(true);
+        }
+        return;
+      }
+
+      const match = GRADES.find((g) => g.key === e.key);
+      if (match) {
+        e.preventDefault();
+        grade(match.grade);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card, revealed, isOcclusion]);
+
   if (loading && !card) {
-    return <p className="text-sm text-zinc-500">Cargando...</p>;
+    return (
+      <div className="space-y-4">
+        <div className="h-4 w-32 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+        <div className="h-[220px] animate-pulse rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800" />
+        <div className="h-12 animate-pulse rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+      </div>
+    );
   }
 
   if (!card) {
     return (
       <div className="text-center py-16 space-y-3">
-        <p className="text-lg font-medium text-zinc-900">
+        <p className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
           {reviewedInSession > 0
             ? `¡Listo! Repasaste ${reviewedInSession} tarjeta${reviewedInSession === 1 ? "" : "s"}.`
             : "No hay tarjetas pendientes por ahora."}
         </p>
-        <Link href="/" className="text-sm text-zinc-500 hover:underline">
+        <Link
+          href="/"
+          className="text-sm text-zinc-500 hover:underline dark:text-zinc-400"
+        >
           Volver al inicio
         </Link>
       </div>
     );
   }
 
-  const isOcclusion = Array.isArray(card.occlusions) && card.occlusions.length > 0;
+  const sessionTotal = reviewedInSession + (dueCount ?? 0);
+  const progressPct = sessionTotal > 0 ? (reviewedInSession / sessionTotal) * 100 : 0;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between text-xs text-zinc-500">
-        <span>{card.subjectName}</span>
-        <span>Quedan {dueCount}</span>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+          <span>{card.subjectName}</span>
+          <span>Quedan {dueCount}</span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+          <div
+            className="h-full rounded-full bg-indigo-600 transition-all duration-300"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
       </div>
 
-      <div className="min-h-[220px] rounded-xl border border-zinc-200 bg-white p-6 flex items-center justify-center text-center">
+      <div className="min-h-[220px] rounded-xl border border-zinc-200 bg-white p-6 flex items-center justify-center text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="w-full">
           {isOcclusion && card.frontImageUrl ? (
             <div className="relative mx-auto mb-3 w-full">
@@ -152,7 +203,9 @@ export default function StudySession() {
               </div>
             )
           )}
-          <p className="text-base text-zinc-900 whitespace-pre-wrap">{card.front}</p>
+          <p className="text-base text-zinc-900 whitespace-pre-wrap dark:text-zinc-100">
+            {card.front}
+          </p>
 
           {isOcclusion && !revealed && (
             <div className="mt-4 space-y-2 text-left">
@@ -176,14 +229,14 @@ export default function StudySession() {
                   id={`occ-guess-${i}`}
                   autoFocus={i === 0}
                   placeholder={`Zona ${i + 1}`}
-                  className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 />
               ))}
             </div>
           )}
 
           {isOcclusion && revealed && (
-            <p className="mt-3 text-sm font-medium text-zinc-700">
+            <p className="mt-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
               {card.occlusions!.filter(
                 (r, i) => normalize(guesses[i] ?? "") === normalize(r.label)
               ).length}{" "}
@@ -193,7 +246,7 @@ export default function StudySession() {
 
           {revealed && !isOcclusion && (
             <>
-              <hr className="my-4 border-zinc-200" />
+              <hr className="my-4 border-zinc-200 dark:border-zinc-800" />
               {card.backImageUrl && (
                 <div className="relative mx-auto mb-3 h-48 w-full">
                   <Image
@@ -205,7 +258,9 @@ export default function StudySession() {
                   />
                 </div>
               )}
-              <p className="text-base text-zinc-700 whitespace-pre-wrap">{card.back}</p>
+              <p className="text-base text-zinc-700 whitespace-pre-wrap dark:text-zinc-300">
+                {card.back}
+              </p>
             </>
           )}
         </div>
@@ -214,9 +269,12 @@ export default function StudySession() {
       {!revealed ? (
         <button
           onClick={() => setRevealed(true)}
-          className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+          className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
         >
           {isOcclusion ? "Corregir" : "Mostrar respuesta"}
+          <span className="ml-2 hidden text-indigo-200 sm:inline">
+            {isOcclusion ? "" : "(espacio)"}
+          </span>
         </button>
       ) : (
         <div className="grid grid-cols-4 gap-2">
@@ -224,9 +282,10 @@ export default function StudySession() {
             <button
               key={g.grade}
               onClick={() => grade(g.grade)}
-              className={`rounded-xl px-2 py-3 text-xs font-semibold text-white ${g.className}`}
+              className={`rounded-xl px-2 py-3 text-xs font-semibold text-white transition-colors ${g.className}`}
             >
               {g.label}
+              <span className="ml-1 hidden opacity-70 sm:inline">({g.key})</span>
             </button>
           ))}
         </div>

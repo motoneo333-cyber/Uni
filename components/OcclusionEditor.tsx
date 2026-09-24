@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { toast } from "@/lib/toast";
 
 type Region = { label: string; x: number; y: number; w: number; h: number };
 type DragBox = { x0: number; y0: number; x1: number; y1: number };
@@ -118,6 +119,7 @@ export default function OcclusionEditor({
       setImageUrl(null);
       setRegions([]);
       setQuestion("¿Qué estructura es cada zona marcada?");
+      toast(`Tarjeta creada con ${regions.length} zona${regions.length === 1 ? "" : "s"}`, "success");
       onCreated();
     } finally {
       setSaving(false);
@@ -127,7 +129,7 @@ export default function OcclusionEditor({
   if (!imageUrl) {
     return (
       <div>
-        <p className="text-xs text-zinc-500 mb-2">
+        <p className="text-xs text-zinc-500 mb-2 dark:text-zinc-400">
           Subí una imagen (ej. un diagrama anatómico) para empezar a marcar zonas. Todas
           las zonas que marques van a quedar juntas en una sola tarjeta.
         </p>
@@ -136,17 +138,21 @@ export default function OcclusionEditor({
           accept="image/png,image/jpeg,image/webp,image/gif"
           onChange={(e) => handleUpload(e.target.files?.[0])}
           disabled={uploading}
-          className="text-xs text-zinc-600"
+          className="text-xs text-zinc-600 dark:text-zinc-300"
         />
-        {uploading && <p className="text-xs text-zinc-400 mt-1">Subiendo...</p>}
-        {uploadError && <p className="text-xs text-red-600 mt-1">{uploadError}</p>}
+        {uploading && (
+          <p className="text-xs text-zinc-400 mt-1 dark:text-zinc-500">Subiendo...</p>
+        )}
+        {uploadError && (
+          <p className="text-xs text-red-600 mt-1 dark:text-red-400">{uploadError}</p>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">
         Marcá con el mouse (click y arrastrá) cada zona que querés tapar, escribí qué es
         y agregala. Cuando termines todas las zonas de esta imagen, guardá la tarjeta.
       </p>
@@ -156,7 +162,7 @@ export default function OcclusionEditor({
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
-        className="relative w-full select-none cursor-crosshair border border-zinc-300 rounded-md overflow-hidden"
+        className="relative w-full select-none cursor-crosshair border border-zinc-300 rounded-md overflow-hidden dark:border-zinc-700"
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- necesita tamaño natural para que el % del recuadro coincida con el mouse */}
         <img
@@ -203,27 +209,27 @@ export default function OcclusionEditor({
       {pending && (
         <form
           onSubmit={addRegion}
-          className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-3"
+          className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/50"
         >
           <input
             autoFocus
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="¿Qué es esta zona?"
-            className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+            className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
           />
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={!label.trim()}
-              className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
             >
               Agregar zona
             </button>
             <button
               type="button"
               onClick={() => setPending(null)}
-              className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs"
+              className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs dark:border-zinc-700 dark:text-zinc-300"
             >
               Cancelar
             </button>
@@ -232,7 +238,7 @@ export default function OcclusionEditor({
       )}
 
       {regions.length > 0 && (
-        <ul className="text-xs text-zinc-600 space-y-1">
+        <ul className="text-xs text-zinc-600 space-y-1 dark:text-zinc-300">
           {regions.map((r, i) => (
             <li key={i} className="flex items-center justify-between">
               <span>
@@ -241,7 +247,7 @@ export default function OcclusionEditor({
               <button
                 type="button"
                 onClick={() => removeRegion(i)}
-                className="text-red-500 hover:text-red-700"
+                className="text-red-500 hover:text-red-700 dark:text-red-400"
               >
                 Quitar
               </button>
@@ -250,19 +256,19 @@ export default function OcclusionEditor({
         </ul>
       )}
 
-      <div className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-3">
+      <div className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-800/50">
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Pregunta de la tarjeta"
-          className="w-full rounded-md border border-zinc-300 px-2 py-1 text-sm"
+          className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none focus:border-indigo-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
         />
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={saveCard}
             disabled={saving || regions.length === 0}
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
           >
             {saving ? "Guardando..." : `Guardar tarjeta (${regions.length} zona${regions.length === 1 ? "" : "s"})`}
           </button>
@@ -273,12 +279,12 @@ export default function OcclusionEditor({
               setRegions([]);
               setPending(null);
             }}
-            className="text-xs text-zinc-500 hover:text-zinc-900"
+            className="text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           >
             Usar otra imagen
           </button>
         </div>
-        {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+        {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
       </div>
     </div>
   );

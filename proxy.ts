@@ -6,7 +6,12 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublic =
-    pathname === "/login" || pathname === "/api/auth/login";
+    pathname === "/login" ||
+    pathname === "/api/auth/login" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/icon" ||
+    pathname === "/apple-icon" ||
+    pathname.startsWith("/pwa-icon-");
 
   const token = request.cookies.get(SESSION_COOKIE.name)?.value;
   const authenticated = verifySessionToken(token);
