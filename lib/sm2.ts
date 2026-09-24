@@ -17,7 +17,21 @@ export const GRADE_LABELS = {
   5: "Fácil",
 } as const;
 
-export function applySm2(state: Sm2State, grade: number): Sm2Result {
+// Tope máximo de intervalo. Las materias acá son todas cuatrimestrales
+// (~16 semanas, no anuales): con SM-2 "puro" una tarjeta bien respondida
+// varias veces seguidas puede terminar espaciándose 200+ días, es decir,
+// dejar de aparecer antes del final. Limitamos el intervalo a un fragmento
+// razonable de un cuatrimestre para garantizar varios repasos antes de
+// cualquier examen, en línea con la evidencia de que el espaciado óptimo
+// es una fracción del intervalo de retención objetivo, no equivalente a
+// él (Cepeda et al., 2008 - "spacing effects... temporal ridgeline").
+export const MAX_INTERVAL_DAYS = 60;
+
+export function applySm2(
+  state: Sm2State,
+  grade: number,
+  maxIntervalDays: number = MAX_INTERVAL_DAYS
+): Sm2Result {
   let { easeFactor, interval, repetitions } = state;
 
   if (grade < 3) {
@@ -31,6 +45,7 @@ export function applySm2(state: Sm2State, grade: number): Sm2Result {
     } else {
       interval = Math.round(interval * easeFactor);
     }
+    interval = Math.min(interval, maxIntervalDays);
     repetitions += 1;
   }
 
