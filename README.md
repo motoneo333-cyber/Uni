@@ -35,6 +35,9 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
   campo de texto en el lugar exacto de la frase; al corregir se resalta en
   verde o rojo junto a la respuesta correcta. También funciona en el
   importador masivo (ver más abajo).
+- En cada materia podés tildar varias tarjetas y **eliminar seleccionadas**,
+  o usar **eliminar todas** para vaciar la materia de un saque sin borrar la
+  materia en sí.
 - Acceso protegido con una sola contraseña (pensada para un solo usuario).
 - **Racha de días** en el inicio, modo oscuro automático (según el sistema),
   atajos de teclado en Estudiar (espacio para revelar, 1-4 para calificar),

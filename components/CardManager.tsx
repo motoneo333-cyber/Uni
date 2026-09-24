@@ -41,7 +41,12 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
   const [editFrontImageUrl, setEditFrontImageUrl] = useState<string | null>(null);
   const [editBackImageUrl, setEditBackImageUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<"simple" | "cloze" | "occlusion">("simple");
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    description?: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -107,13 +112,91 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
     }
   }
 
-  async function confirmDelete() {
-    if (!pendingDeleteId) return;
-    const id = pendingDeleteId;
-    setPendingDeleteId(null);
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) =>
+      prev.size === cards.length ? new Set() : new Set(cards.map((c) => c.id))
+    );
+  }
+
+  async function doDeleteSingle(id: string) {
     await fetch(`/api/cards/${id}`, { method: "DELETE" });
     setCards((prev) => prev.filter((c) => c.id !== id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     toast("Tarjeta eliminada", "success");
+  }
+
+  async function doDeleteSelected() {
+    const ids = [...selectedIds];
+    const res = await fetch("/api/cards/bulk-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    if (res.ok) {
+      setCards((prev) => prev.filter((c) => !selectedIds.has(c.id)));
+      setSelectedIds(new Set());
+      toast(`${ids.length} tarjeta${ids.length === 1 ? "" : "s"} eliminada${ids.length === 1 ? "" : "s"}`, "success");
+    } else {
+      toast("No se pudieron eliminar las tarjetas", "error");
+    }
+  }
+
+  async function doDeleteAll() {
+    const res = await fetch(`/api/subjects/${subjectId}/cards`, { method: "DELETE" });
+    if (res.ok) {
+      setCards([]);
+      setSelectedIds(new Set());
+      toast("Se eliminaron todas las tarjetas de la materia", "success");
+    } else {
+      toast("No se pudieron eliminar las tarjetas", "error");
+    }
+  }
+
+  function askDeleteSingle(id: string) {
+    setConfirmState({
+      title: "¿Eliminar esta tarjeta?",
+      description: "No se puede deshacer.",
+      onConfirm: async () => {
+        setConfirmState(null);
+        await doDeleteSingle(id);
+      },
+    });
+  }
+
+  function askDeleteSelected() {
+    const n = selectedIds.size;
+    setConfirmState({
+      title: `¿Eliminar ${n} tarjeta${n === 1 ? "" : "s"} seleccionada${n === 1 ? "" : "s"}?`,
+      description: "No se puede deshacer.",
+      onConfirm: async () => {
+        setConfirmState(null);
+        await doDeleteSelected();
+      },
+    });
+  }
+
+  function askDeleteAll() {
+    setConfirmState({
+      title: "¿Eliminar todas las tarjetas de esta materia?",
+      description: `Se van a borrar las ${cards.length} tarjetas. La materia queda vacía, pero no se elimina.`,
+      onConfirm: async () => {
+        setConfirmState(null);
+        await doDeleteAll();
+      },
+    });
   }
 
   function startEdit(card: Card) {
@@ -273,9 +356,38 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
       </div>
 
       <div>
-        <p className="text-sm font-medium text-zinc-900 mb-2 dark:text-zinc-100">
-          Tarjetas ({cards.length})
-        </p>
+        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Tarjetas ({cards.length})
+          </p>
+          {cards.length > 0 && (
+            <div className="flex items-center gap-3 text-xs">
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                {selectedIds.size === cards.length ? "Deseleccionar todas" : "Seleccionar todas"}
+              </button>
+              {selectedIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={askDeleteSelected}
+                  className="font-medium text-red-500 transition-colors hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  Eliminar seleccionadas ({selectedIds.size})
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={askDeleteAll}
+                className="text-red-500 transition-colors hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+              >
+                Eliminar todas
+              </button>
+            </div>
+          )}
+        </div>
         {loading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
@@ -338,6 +450,13 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                 ) : (
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(c.id)}
+                        onChange={() => toggleSelect(c.id)}
+                        className="mt-1.5 h-4 w-4 shrink-0 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-950"
+                        aria-label="Seleccionar tarjeta"
+                      />
                       {(c.frontImageUrl || c.backImageUrl) && (
                         <div className="relative h-12 w-12 shrink-0 rounded-md border border-zinc-200 overflow-hidden dark:border-zinc-700">
                           <Image
@@ -382,7 +501,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                         Editar
                       </button>
                       <button
-                        onClick={() => setPendingDeleteId(c.id)}
+                        onClick={() => askDeleteSingle(c.id)}
                         className="text-xs text-red-500 transition-colors hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                       >
                         Eliminar
@@ -397,11 +516,11 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
       </div>
 
       <ConfirmDialog
-        open={pendingDeleteId !== null}
-        title="¿Eliminar esta tarjeta?"
-        description="No se puede deshacer."
-        onConfirm={confirmDelete}
-        onCancel={() => setPendingDeleteId(null)}
+        open={confirmState !== null}
+        title={confirmState?.title ?? ""}
+        description={confirmState?.description}
+        onConfirm={() => confirmState?.onConfirm()}
+        onCancel={() => setConfirmState(null)}
       />
     </div>
   );
