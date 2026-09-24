@@ -24,6 +24,7 @@ export async function POST(request: Request) {
       easeFactor: card.easeFactor,
       interval: card.interval,
       repetitions: card.repetitions,
+      learningStep: card.learningStep,
     },
     grade
   );
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
         easeFactor: result.easeFactor,
         interval: result.interval,
         repetitions: result.repetitions,
+        learningStep: result.learningStep,
         dueDate: result.dueDate,
         lastGrade: grade,
       },

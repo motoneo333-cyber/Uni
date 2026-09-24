@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import ImagePicker from "./ImagePicker";
 import OcclusionEditor from "./OcclusionEditor";
+import OcclusionCanvas from "./OcclusionCanvas";
 import ConfirmDialog from "./ConfirmDialog";
 import { toast } from "@/lib/toast";
 import { renderClozeSource, splitClozeFront } from "@/lib/cloze";
+
+type OcclusionRegion = { x: number; y: number; w: number; h: number; label: string };
 
 type Card = {
   id: string;
@@ -14,11 +17,12 @@ type Card = {
   back: string;
   frontImageUrl: string | null;
   backImageUrl: string | null;
-  occlusions: { x: number; y: number; w: number; h: number; label: string }[] | null;
+  occlusions: OcclusionRegion[] | null;
   clozeAnswers: string[] | null;
   tags: string[];
   interval: number;
   repetitions: number;
+  learningStep: number;
   dueDate: string;
 };
 
@@ -40,6 +44,7 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
   const [editBack, setEditBack] = useState("");
   const [editFrontImageUrl, setEditFrontImageUrl] = useState<string | null>(null);
   const [editBackImageUrl, setEditBackImageUrl] = useState<string | null>(null);
+  const [editOcclusions, setEditOcclusions] = useState<OcclusionRegion[]>([]);
   const [mode, setMode] = useState<"simple" | "cloze" | "occlusion">("simple");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmState, setConfirmState] = useState<{
@@ -209,15 +214,22 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
     setEditBack(card.back);
     setEditFrontImageUrl(card.frontImageUrl);
     setEditBackImageUrl(card.backImageUrl);
+    setEditOcclusions(card.occlusions ?? []);
   }
 
   async function saveEdit(id: string) {
+    const editingCard = cards.find((c) => c.id === id);
+    const isOcclusionCard = !!editingCard?.occlusions && editingCard.occlusions.length > 0;
+    if (isOcclusionCard && editOcclusions.length === 0) {
+      toast("Una tarjeta de oclusión necesita al menos una zona marcada", "error");
+      return;
+    }
     const res = await fetch(`/api/cards/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         front: editFront,
-        back: editBack,
+        ...(isOcclusionCard ? { occlusions: editOcclusions } : { back: editBack }),
         frontImageUrl: editFrontImageUrl,
         backImageUrl: editBackImageUrl,
       }),
@@ -227,7 +239,8 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
       toast("Cambios guardados", "success");
       load();
     } else {
-      toast("No se pudo guardar", "error");
+      const data = await res.json().catch(() => ({}));
+      toast(data.error ?? "No se pudo guardar", "error");
     }
   }
 
@@ -410,28 +423,51 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
               >
                 {editingId === c.id ? (
                   <div className="space-y-2">
-                    <textarea
-                      value={editFront}
-                      onChange={(e) => setEditFront(e.target.value)}
-                      rows={2}
-                      className={inputClass}
-                    />
-                    <ImagePicker
-                      label="Imagen del frente"
-                      value={editFrontImageUrl}
-                      onChange={setEditFrontImageUrl}
-                    />
-                    <textarea
-                      value={editBack}
-                      onChange={(e) => setEditBack(e.target.value)}
-                      rows={2}
-                      className={inputClass}
-                    />
-                    <ImagePicker
-                      label="Imagen del dorso"
-                      value={editBackImageUrl}
-                      onChange={setEditBackImageUrl}
-                    />
+                    {c.occlusions && c.occlusions.length > 0 ? (
+                      <>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          Agregá zonas nuevas arrastrando sobre la imagen, o quitá las que
+                          ya no quieras. La imagen no se puede cambiar acá — para usar otra,
+                          borrá esta tarjeta y creá una nueva.
+                        </p>
+                        <input
+                          value={editFront}
+                          onChange={(e) => setEditFront(e.target.value)}
+                          placeholder="Pregunta de la tarjeta"
+                          className={inputClass}
+                        />
+                        <OcclusionCanvas
+                          imageUrl={c.frontImageUrl!}
+                          regions={editOcclusions}
+                          onChange={setEditOcclusions}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <textarea
+                          value={editFront}
+                          onChange={(e) => setEditFront(e.target.value)}
+                          rows={2}
+                          className={inputClass}
+                        />
+                        <ImagePicker
+                          label="Imagen del frente"
+                          value={editFrontImageUrl}
+                          onChange={setEditFrontImageUrl}
+                        />
+                        <textarea
+                          value={editBack}
+                          onChange={(e) => setEditBack(e.target.value)}
+                          rows={2}
+                          className={inputClass}
+                        />
+                        <ImagePicker
+                          label="Imagen del dorso"
+                          value={editBackImageUrl}
+                          onChange={setEditBackImageUrl}
+                        />
+                      </>
+                    )}
                     <div className="flex gap-2">
                       <button
                         onClick={() => saveEdit(c.id)}
@@ -487,9 +523,21 @@ export default function CardManager({ subjectId }: { subjectId: string }) {
                         </p>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400">{c.back}</p>
                         <p className="text-xs text-zinc-400 mt-1 dark:text-zinc-500">
-                          {c.repetitions === 0
-                            ? "Sin repasar"
-                            : `${c.interval}d · vence ${new Date(c.dueDate).toLocaleDateString("es-AR")}`}
+                          {c.learningStep > 0 ? (
+                            <span className="text-orange-500 dark:text-orange-400">
+                              reaprendizaje · vuelve{" "}
+                              {new Date(c.dueDate).toLocaleString("es-AR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          ) : c.repetitions === 0 ? (
+                            "Sin repasar"
+                          ) : (
+                            `${c.interval}d · vence ${new Date(c.dueDate).toLocaleDateString("es-AR")}`
+                          )}
                         </p>
                       </div>
                     </div>
