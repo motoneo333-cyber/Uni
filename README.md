@@ -14,12 +14,14 @@ Curriculares Acreditables, agrupadas por año y cuatrimestre.
   entre temas parecidos.
 - **Materias** es donde cargás las tarjetas: una por una o pegando varias de
   golpe con el formato `pregunta | respuesta | tags(opcional)`, una por línea.
+- Cada tarjeta puede tener una imagen opcional en el frente y/o el dorso
+  (útil para anatomía, posturas, técnicas manuales).
 - Acceso protegido con una sola contraseña (pensada para un solo usuario).
 
 ## Stack
 
-Next.js 16 (App Router) + Prisma 7 + PostgreSQL + Tailwind CSS. Sin backend
-aparte: todo corre como funciones serverless en Vercel.
+Next.js 16 (App Router) + Prisma 7 + PostgreSQL + Tailwind CSS + Vercel Blob
+(imágenes). Sin backend aparte: todo corre como funciones serverless en Vercel.
 
 ## Deploy en Vercel (una sola vez, para el año que viene)
 
@@ -50,7 +52,19 @@ usá el puerto `6543` de pgBouncer).
 4. Deploy. Vercel corre `npm install` → `postinstall` genera el cliente de
    Prisma → `npm run build`.
 
-### 3. Crear las tablas y cargar las materias
+### 3. Habilitar el storage de imágenes (Vercel Blob)
+
+Para que las tarjetas puedan tener imágenes:
+
+1. En tu proyecto de Vercel → pestaña **Storage** → **Create Database** → **Blob**.
+2. Conectalo al proyecto. Vercel agrega automáticamente la variable de entorno
+   `BLOB_READ_WRITE_TOKEN` — no hace falta copiarla a mano.
+3. Si ya tenías el proyecto deployado, hacé un **Redeploy** para que la tome.
+
+Sin este paso la app funciona igual, solo que subir una imagen a una tarjeta
+va a fallar.
+
+### 4. Crear las tablas y cargar las materias
 
 Con la `DATABASE_URL` de producción en tu `.env` local (o exportada en la
 terminal), corré una sola vez desde tu máquina:
@@ -63,6 +77,17 @@ npm run db:seed   # carga las 41 materias del plan + ACA
 
 Listo — entrá a tu URL de Vercel, poné la contraseña y empezá a cargar
 tarjetas por materia.
+
+### Si ya tenías la base creada de antes (agregar soporte de imágenes)
+
+Si ya corriste `db:push`/`db:seed` una vez, no hace falta recrear nada: solo
+agregá las 2 columnas nuevas. Pegá esto en el **SQL Editor** de Supabase (o
+corré `npm run db:push` de nuevo, que detecta el cambio de schema solo):
+
+```sql
+ALTER TABLE "Card" ADD COLUMN "frontImageUrl" TEXT;
+ALTER TABLE "Card" ADD COLUMN "backImageUrl" TEXT;
+```
 
 ## Desarrollo local
 
