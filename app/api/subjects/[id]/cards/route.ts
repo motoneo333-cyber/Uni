@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parseCloze } from "@/lib/cloze";
+import { cleanupOrphanedBlobs } from "@/lib/blobCleanup";
 
 type OcclusionRegion = { x: number; y: number; w: number; h: number; label: string };
 
@@ -92,4 +93,20 @@ export async function POST(
     },
   });
   return NextResponse.json(card, { status: 201 });
+}
+
+// Borra todas las tarjetas de la materia, sin borrar la materia en sí.
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const cards = await prisma.card.findMany({
+    where: { subjectId: id },
+    select: { frontImageUrl: true, backImageUrl: true },
+  });
+  const { count } = await prisma.card.deleteMany({ where: { subjectId: id } });
+  await cleanupOrphanedBlobs(cards.flatMap((c) => [c.frontImageUrl, c.backImageUrl]));
+
+  return NextResponse.json({ deleted: count });
 }
