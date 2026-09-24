@@ -11,6 +11,7 @@ export function proxy(request: NextRequest) {
     pathname === "/manifest.webmanifest" ||
     pathname === "/icon" ||
     pathname === "/apple-icon" ||
+    pathname === "/sw.js" ||
     pathname.startsWith("/pwa-icon-");
 
   const token = request.cookies.get(SESSION_COOKIE.name)?.value;
