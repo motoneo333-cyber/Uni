@@ -56,8 +56,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: blob.url });
   } catch (err) {
     console.error("Error subiendo a Vercel Blob:", err);
+    const detail =
+      err instanceof Error ? `${err.name}: ${err.message}` : String(err);
     return NextResponse.json(
-      { error: "Falló la subida al storage. Probá de nuevo en un momento." },
+      { error: `Falló la subida al storage. Detalle: ${detail}` },
       { status: 502 }
     );
   }
